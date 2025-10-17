@@ -297,6 +297,31 @@ let timeset = 5; // 30 seconds per question
 let highScore = localStorage.getItem('jsQuizHighScore') || 0;
 const docs = document.getElementById("quiz-container")
 const bar = document.getElementById("timer-fill")
+// WebAudio context: create once and resume on first user gesture (required on mobile)
+let audioCtx = null;
+
+function initAudioOnUserGesture() {
+    if (audioCtx) return;
+    // Do not create/resume until a user gesture occurs. Add short-lived listeners
+    const resumeAudio = () => {
+        try {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+        } catch (e) {
+            // Some environments block audio - fail silently and log for debugging
+            console.warn('WebAudio init failed:', e);
+        }
+        window.removeEventListener('touchstart', resumeAudio);
+        window.removeEventListener('click', resumeAudio);
+    };
+
+    window.addEventListener('touchstart', resumeAudio, { once: true, passive: true });
+    window.addEventListener('click', resumeAudio, { once: true, passive: true });
+}
 
 // Utility: Update progress bar
 function updateProgress() {
@@ -453,27 +478,42 @@ function restartQuiz() {
     document.getElementById('high-score').style.display = 'none';
     loadQuestion();
 }
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', loadQuestion);
+// Initialize on page load: set up audio unlock on first gesture and then load quiz
+document.addEventListener('DOMContentLoaded', () => {
+    initAudioOnUserGesture();
+    loadQuestion();
+});
 
 
 
-function playSound(frequency,type, duration = 0.3) {
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
+function playSound(frequency, type, duration = 0.3) {
+    try {
+        // Ensure we have a shared AudioContext
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
 
-  oscillator.type = type; // you can try "triangle", "square", etc.
-  oscillator.frequency.value = frequency;
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
+        // If context is suspended (mobile before user gesture), try to resume.
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+        }
 
-  // Start and stop the sound
-  oscillator.start();
-  gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(
-    0.001,
-    audioCtx.currentTime + duration
-  );
-  oscillator.stop(audioCtx.currentTime + duration);
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.type = type || 'sine';
+        oscillator.frequency.value = frequency;
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        gainNode.gain.setValueAtTime(1, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        oscillator.start(now);
+        oscillator.stop(now + duration + 0.02);
+    } catch (e) {
+        // Fallback: log but don't throw — prevents breaking gameplay when audio can't start
+        console.warn('playSound failed:', e);
+    }
 }
