@@ -113,7 +113,7 @@ let score = 0;
 let totalQuestions = quizData.length;
 let selectedAnswer = -1;
 let timerInterval; // For per-question timer
-let timeset = 5; // 30 seconds per question
+let timeset = 10; // 10 seconds per question
 let highScore = localStorage.getItem('jsQuizHighScore') || 0;
 const docs = document.getElementById("quiz-container")
 const bar = document.getElementById("timer-fill")
@@ -338,3 +338,4 @@ function playSound(frequency, type, duration = 0.3) {
     }
 
 }
+
