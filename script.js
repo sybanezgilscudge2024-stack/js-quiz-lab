@@ -266,8 +266,7 @@ document.getElementById('score-container').style.display = 'block';
 const percentage = Math.round((score / totalQuestions) * 100);
 document.getElementById('score-circle-text').textContent = score;
 document.getElementById('total-score').textContent = totalQuestions;
-// document.getElementById('score').textContent = score;
-// document.getElementById('total').textContent = totalQuestions;
+
 let feedback = '';
 if (percentage >= 80) feedback = "Outstanding! You're a JavaScript wizard. 🌟";
 else if (percentage >= 60) feedback = "Well done! Keep practicing those concepts. 👍";
@@ -338,4 +337,5 @@ function playSound(frequency, type, duration = 0.3) {
     }
 
 }
+
 
